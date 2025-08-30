@@ -4,12 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AddJobForm } from '@/components/AddJobForm';
-import { useJobStorage } from '@/hooks/useJobStorage';
-import { Plus, Target, TrendingUp, Users, CheckCircle } from 'lucide-react';
+import { useIndexedDbStorage } from '@/hooks/useIndexedDbStorage';
+import { Plus, Target, TrendingUp, Users, CheckCircle, Loader2 } from 'lucide-react';
 
 const Index = () => {
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
-  const { jobs, addJob } = useJobStorage();
+  const { jobs, isLoading, error, addJob } = useIndexedDbStorage();
 
   const handleAddJob = (job: Parameters<typeof addJob>[0]) => {
     addJob(job);
@@ -22,6 +22,34 @@ const Index = () => {
     interviewing: jobs.filter(j => j.status === 'interviewing').length,
     offers: jobs.filter(j => j.status === 'offer').length,
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-background/80 flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div>
+            <h2 className="text-xl font-semibold">Loading Job Tracker</h2>
+            <p className="text-muted-foreground">Setting up your applications...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-background/80 flex items-center justify-center">
+        <Card className="max-w-md p-6 text-center">
+          <h2 className="text-xl font-semibold text-destructive mb-2">Error Loading Applications</h2>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-background/80">
@@ -44,15 +72,18 @@ const Index = () => {
               <div className="hidden md:flex items-center gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 bg-applied rounded-full"></div>
-                  <span>{stats.applied} Applied</span>
+                  <span>{stats.applied.toLocaleString()} Applied</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 bg-interviewing rounded-full"></div>
-                  <span>{stats.interviewing} Interviewing</span>
+                  <span>{stats.interviewing.toLocaleString()} Interviewing</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 bg-offer rounded-full"></div>
-                  <span>{stats.offers} Offers</span>
+                  <span>{stats.offers.toLocaleString()} Offers</span>
+                </div>
+                <div className="text-muted-foreground">
+                  Total: {stats.total.toLocaleString()}
                 </div>
               </div>
               
@@ -77,7 +108,8 @@ const Index = () => {
                 </div>
                 <h2 className="text-2xl font-bold mb-2">Start Tracking Applications</h2>
                 <p className="text-muted-foreground">
-                  Organize your job search with our Kanban-style board. Track applications from start to finish.
+                  Organize your job search with our high-performance Kanban board. 
+                  Built to handle thousands of applications efficiently.
                 </p>
               </div>
               
@@ -103,7 +135,7 @@ const Index = () => {
             </Card>
           </div>
         ) : (
-          /* Kanban Board */
+          /* Kanban Board - Now with virtualization and search */
           <div className="h-[calc(100vh-12rem)]">
             <KanbanBoard />
           </div>

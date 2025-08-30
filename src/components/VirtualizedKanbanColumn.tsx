@@ -1,16 +1,17 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Job, JobStatus } from '@/types/job';
-import { JobCard } from './JobCard';
+import { SortableJobCard } from './SortableJobCard';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AddJobForm } from './AddJobForm';
 import { Plus } from 'lucide-react';
-import { SortableJobCard } from './SortableJobCard';
+import { useState, useRef } from 'react';
 
-interface KanbanColumnProps {
+interface VirtualizedKanbanColumnProps {
   id: JobStatus;
   title: string;
   color: string;
@@ -18,21 +19,32 @@ interface KanbanColumnProps {
   onAddJob: (job: Omit<Job, 'id' | 'lastUpdated'>) => void;
   onUpdateJob: (id: string, updates: Partial<Job>) => void;
   onDeleteJob: (id: string) => void;
+  height: number; // Height for virtualization
 }
 
-export const KanbanColumn = ({ 
+export const VirtualizedKanbanColumn = ({ 
   id, 
   title, 
   color, 
   jobs, 
   onAddJob, 
   onUpdateJob, 
-  onDeleteJob 
-}: KanbanColumnProps) => {
+  onDeleteJob,
+  height 
+}: VirtualizedKanbanColumnProps) => {
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
+  const parentRef = useRef<HTMLDivElement>(null);
 
   const { setNodeRef, isOver } = useDroppable({
     id: id,
+  });
+
+  // Virtual list for performance with large datasets
+  const rowVirtualizer = useVirtualizer({
+    count: jobs.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 120, // Estimated height of each job card
+    overscan: 5, // Render 5 extra items outside visible area
   });
 
   const handleAddJob = (job: Omit<Job, 'id' | 'lastUpdated'>) => {
@@ -70,6 +82,8 @@ export const KanbanColumn = ({
     }
   };
 
+  const virtualItems = rowVirtualizer.getVirtualItems();
+
   return (
     <div className="flex flex-col h-full min-w-[300px]">
       <Card className={`flex flex-col h-full border-t-4 ${getColumnColorClass()} shadow-lg`}>
@@ -78,7 +92,7 @@ export const KanbanColumn = ({
             <div className="flex items-center gap-3">
               <h3 className="font-semibold text-foreground">{title}</h3>
               <span className="bg-muted text-muted-foreground text-xs px-2 py-1 rounded-full">
-                {jobs.length}
+                {jobs.length.toLocaleString()}
               </span>
             </div>
             <Button
@@ -94,23 +108,13 @@ export const KanbanColumn = ({
 
         <div
           ref={setNodeRef}
-          className={`flex-1 p-4 space-y-3 overflow-y-auto transition-colors ${
+          className={`flex-1 relative transition-colors ${
             isOver ? 'bg-muted/20' : ''
           }`}
+          style={{ height }}
         >
-          <SortableContext items={jobs.map(job => job.id)} strategy={verticalListSortingStrategy}>
-            {jobs.map((job) => (
-              <SortableJobCard
-                key={job.id}
-                job={job}
-                onUpdate={onUpdateJob}
-                onDelete={onDeleteJob}
-              />
-            ))}
-          </SortableContext>
-          
-          {jobs.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
+          {jobs.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground p-4">
               <p className="text-sm">No applications yet</p>
               <Button
                 variant="outline"
@@ -121,6 +125,49 @@ export const KanbanColumn = ({
                 <Plus className="h-4 w-4 mr-2" />
                 Add First Application
               </Button>
+            </div>
+          ) : (
+            <div
+              ref={parentRef}
+              className="h-full overflow-auto p-4"
+              style={{
+                height,
+              }}
+            >
+              <SortableContext items={jobs.map(job => job.id)} strategy={verticalListSortingStrategy}>
+                <div
+                  style={{
+                    height: `${rowVirtualizer.getTotalSize()}px`,
+                    width: '100%',
+                    position: 'relative',
+                  }}
+                >
+                  {virtualItems.map((virtualItem) => {
+                    const job = jobs[virtualItem.index];
+                    return (
+                      <div
+                        key={virtualItem.key}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: `${virtualItem.size}px`,
+                          transform: `translateY(${virtualItem.start}px)`,
+                        }}
+                      >
+                        <div className="pb-3">
+                          <SortableJobCard
+                            job={job}
+                            onUpdate={onUpdateJob}
+                            onDelete={onDeleteJob}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </SortableContext>
             </div>
           )}
         </div>
