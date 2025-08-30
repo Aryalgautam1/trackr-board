@@ -52,6 +52,23 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				// Kanban column colors
+				applied: {
+					DEFAULT: 'hsl(var(--applied))',
+					light: 'hsl(var(--applied-light))'
+				},
+				interviewing: {
+					DEFAULT: 'hsl(var(--interviewing))',
+					light: 'hsl(var(--interviewing-light))'
+				},
+				offer: {
+					DEFAULT: 'hsl(var(--offer))',
+					light: 'hsl(var(--offer-light))'
+				},
+				rejected: {
+					DEFAULT: 'hsl(var(--rejected))',
+					light: 'hsl(var(--rejected-light))'
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
